@@ -132,29 +132,47 @@ function ResourcePage({ id, label }: { id: string; label: string }) {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [modal, setModal] = useState(false)
+  const [editing, setEditing] = useState<Item | null>(null)
   const [toast, setToast] = useState('')
   const load = () => { setLoading(true); setError(''); api.list(id).then(setItems).catch((e: ApiError) => setError(e.message)).finally(() => setLoading(false)) }
   useEffect(load, [id])
   const visible = useMemo(() => items.filter(item => JSON.stringify(item).toLowerCase().includes(query.toLowerCase())), [items, query])
   const remove = async (item: Item) => { if (!confirm(`Excluir ${display(item.nome ?? item.id)}? Registros relacionados podem ser removidos em cascata.`)) return; try { await api.remove(id, Number(item.id)); setToast('Registro excluído com sucesso.'); load() } catch (e) { setToast((e as Error).message) } }
+  const closeModal = () => { setModal(false); setEditing(null) }
   return <>
-    <section className="page-heading compact"><div><span className="eyebrow">CADASTROS</span><h1>{label}</h1><p>{config.description}</p></div><Button icon="plus" onClick={() => setModal(true)}>Novo {config.singular}</Button></section>
+    <section className="page-heading compact"><div><span className="eyebrow">CADASTROS</span><h1>{label}</h1><p>{config.description}</p></div><Button icon="plus" onClick={() => { setEditing(null); setModal(true) }}>Novo {config.singular}</Button></section>
     <article className="table-panel">
       <div className="table-tools"><label className="table-search"><Icon name="search" size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder={`Pesquisar ${label.toLowerCase()}...`}/></label><div><button className="filter-btn" onClick={load}><Icon name="refresh" size={17}/>Atualizar</button></div></div>
       {loading ? <div className="skeleton-wrap">{[1,2,3,4].map(i => <div className="skeleton" key={i}/>)}</div> : error ? <div className="error-state"><span><Icon name="refresh"/></span><h3>Não foi possível carregar os dados</h3><p>{error}</p><Button variant="secondary" onClick={load}>Tentar novamente</Button></div> : visible.length === 0 ? <Empty icon={id === 'pets' ? 'paw' : 'grid'} title={query ? 'Nenhum resultado encontrado' : `Nenhum ${config.singular} cadastrado`} text={query ? 'Tente ajustar os termos da pesquisa.' : 'Comece adicionando o primeiro registro.'} action={!query ? `Novo ${config.singular}` : undefined} onClick={() => setModal(true)}/> :
-      <div className="table-scroll"><table><thead><tr>{config.columns.map(([,title]) => <th key={title}>{title}<Icon name="arrow" size={12}/></th>)}<th>Ações</th></tr></thead><tbody>{visible.map((item,i) => <tr key={String(item.id ?? i)}>{config.columns.map(([key]) => <td key={key}>{key === 'status' || key === 'ativo' ? <span className="badge">{display(item[key])}</span> : display(item[key])}</td>)}<td><div className="row-actions"><button title="Visualizar"><Icon name="eye" size={17}/></button><button title="Editar"><Icon name="edit" size={17}/></button><button title="Excluir" onClick={() => remove(item)}><Icon name="trash" size={17}/></button></div></td></tr>)}</tbody></table></div>}
+      <div className="table-scroll"><table><thead><tr>{config.columns.map(([,title]) => <th key={title}>{title}<Icon name="arrow" size={12}/></th>)}<th>Ações</th></tr></thead><tbody>{visible.map((item,i) => <tr key={String(item.id ?? i)}>{config.columns.map(([key]) => <td key={key}>{key === 'status' || key === 'ativo' ? <span className="badge">{display(item[key])}</span> : display(item[key])}</td>)}<td><div className="row-actions"><button title="Visualizar"><Icon name="eye" size={17}/></button><button title="Editar" onClick={() => { setEditing(item); setModal(true) }}><Icon name="edit" size={17}/></button><button title="Excluir" onClick={() => remove(item)}><Icon name="trash" size={17}/></button></div></td></tr>)}</tbody></table></div>}
       <div className="pagination"><span>Exibindo {visible.length} de {items.length} registros</span><div><button disabled>Anterior</button><button className="current">1</button><button disabled>Próxima</button></div></div>
     </article>
-    {modal && <CreateModal resource={id} config={config} close={() => setModal(false)} done={() => { setModal(false); setToast('Registro cadastrado com sucesso.'); load() }}/>}
+    {modal && <CreateModal resource={id} config={config} item={editing} close={closeModal} done={() => { setModal(false); setToast(editing ? 'Registro atualizado com sucesso.' : 'Registro cadastrado com sucesso.'); setEditing(null); load() }}/>}
     {toast && <div className="toast"><Icon name="shield"/><span>{toast}</span><button onClick={() => setToast('')}><Icon name="close" size={16}/></button></div>}
   </>
 }
 
-function CreateModal({ resource, config, close, done }: { resource: string; config: typeof configs[string]; close: () => void; done: () => void }) {
+function CreateModal({ resource, config, item, close, done }: { resource: string; config: typeof configs[string]; item: Item | null; close: () => void; done: () => void }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSaving(true); setError(''); const data = Object.fromEntries(new FormData(event.currentTarget)); config.fields.filter(f => f[2] === 'number').forEach(([key]) => { data[key] = Number(data[key]) as never }); try { await api.create(resource, data); done() } catch (e) { setError((e as Error).message); setSaving(false) } }
-  return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && close()}><section className="modal"><div className="modal-head"><div><span className="modal-icon"><Icon name="plus"/></span><div><h2>Novo {config.singular}</h2><p>Preencha os dados abaixo para cadastrar.</p></div></div><button onClick={close}><Icon name="close"/></button></div><form onSubmit={submit}><div className="form-grid">{config.fields.map(([name,label,type]) => <label key={name}><span>{label}</span><input name={name} type={type} required placeholder={`Informe ${label.toLowerCase()}`}/><small>Campo conforme contrato de integração</small></label>)}</div>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><Button variant="secondary" onClick={close}>Cancelar</Button><Button type="submit" icon={saving ? 'refresh' : 'plus'}>{saving ? 'Salvando...' : 'Cadastrar'}</Button></div></form></section></div>
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    const data: Item = Object.fromEntries(new FormData(event.currentTarget))
+    config.fields.filter(f => f[2] === 'number').forEach(([key]) => { data[key] = Number(data[key]) })
+    config.fields.filter(f => f[2] === 'password').forEach(([key]) => { if (!data[key]) delete data[key] })
+    try {
+      if (item) await api.update(resource, Number(item.id), data)
+      else await api.create(resource, data)
+      done()
+    } catch (e) {
+      setError((e as Error).message)
+      setSaving(false)
+    }
+  }
+  const heading = item ? `Editar ${config.singular}` : `Novo ${config.singular}`
+  return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && close()}><section className="modal"><div className="modal-head"><div><span className="modal-icon"><Icon name={item ? 'edit' : 'plus'}/></span><div><h2>{heading}</h2><p>{item ? 'Atualize os dados abaixo.' : 'Preencha os dados abaixo para cadastrar.'}</p></div></div><button onClick={close}><Icon name="close"/></button></div><form onSubmit={submit}><div className="form-grid">{config.fields.map(([name,label,type]) => <label key={name}><span>{label}</span><input name={name} type={type} required={!item || type !== 'password'} defaultValue={item && type !== 'password' ? display(item[name]) === '—' ? '' : String(item[name]) : ''} placeholder={`Informe ${label.toLowerCase()}`}/><small>Campo conforme contrato de integração</small></label>)}</div>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><Button variant="secondary" onClick={close}>Cancelar</Button><Button type="submit" icon={saving ? 'refresh' : item ? 'edit' : 'plus'}>{saving ? 'Salvando...' : item ? 'Salvar alterações' : 'Cadastrar'}</Button></div></form></section></div>
 }
 
 function Settings() {
