@@ -591,6 +591,58 @@ main {
   font-size: 12px;
 }
 
+.mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 20px;
+}
+
+.mini-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.mini-list li:last-child {
+  border-bottom: 0;
+}
+
+.mini-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #e8f5ee;
+  color: var(--color-brand);
+  flex: none;
+}
+
+.mini-list li>div {
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-list strong,
+.mini-list small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-list strong {
+  font-size: 12px;
+}
+
+.mini-list small,
+.mini-list time {
+  color: var(--color-muted);
+  font-size: 10px;
+}
+
 .empty p {
   color: var(--color-muted);
   font-size: 10px;
@@ -938,6 +990,58 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.breed-field {
+  display: contents;
+}
+
+.breed-input {
+  position: relative;
+}
+
+.breed-input input {
+  width: 100%;
+}
+
+.breed-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #1018281f;
+}
+
+.breed-list li {
+  padding: 9px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.breed-list li:hover,
+.breed-list li[aria-selected="true"] {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+.breed-list .breed-empty {
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.breed-list .breed-empty:hover {
+  background: transparent;
+  color: var(--color-muted);
 }
 
 .select-combo select {

@@ -1,13 +1,11 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react'
+﻿import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react'
 import { api, ApiError } from './api'
 
 export enum EspeciePet {
   CACHORRO = 'cachorro',
   GATO = 'gato',
-  PEIXE = 'peixe',
-  PASSARO = 'passaro',
-  ROEDOR = 'roedor',
-  REPTIL = 'reptil',
+  OUTRO = 'outro'
+
 }
 
 const especiesPetOptions = Object.values(EspeciePet).map((valor) => ({
@@ -75,9 +73,9 @@ const modules = [
 const configs: Record<string, { description: string; singular: string; columns: [string, string][]; fields: [string, string, string][] }> = {
   tutores: { description: 'Gerencie os responsáveis pelos pets da clínica', singular: 'tutor', columns: [['id', 'ID'], ['nome', 'Nome'], ['email', 'E-mail'], ['telefone', 'Telefone'], ['pets', 'Pets']], fields: [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['telefone', 'Telefone', 'tel']] },
   pets: { description: 'Cadastre e acompanhe os animais atendidos pela clínica', singular: 'pet', columns: [['id', 'ID'], ['nome', 'Nome'], ['especie', 'Espécie'], ['raca', 'Raça'], ['tutor', 'Tutor responsável']], fields: [['nome', 'Nome do pet', 'text'], ['especie', 'Espécie', 'select'], ['raca', 'Raça', 'text'], ['id_tutor', 'Tutor responsável', 'number']] },
-  agendamentos: { description: 'Organize os atendimentos e a agenda da clínica', singular: 'agendamento', columns: [['id', 'ID'], ['data_hora', 'Data'], ['pet', 'Pet'], ['servico', 'Serviço'], ['status', 'Status']], fields: [['id_pet', 'Pet', 'number'], ['id_servico', 'Serviço', 'number'], ['data_hora', 'Data', 'date'], ['status', 'Status', 'text']] },
-  vacinas: { description: 'Gerencie o catálogo de vacinas da clínica', singular: 'vacina', columns: [['id', 'ID'], ['nome', 'Nome da vacina'], ['descricao', 'Descrição']], fields: [['nome', 'Nome da vacina', 'text'], ['descricao', 'Descrição', 'text']] },
-  'pet-vacina': { description: 'Acompanhe o histórico de vacinação dos pets', singular: 'aplicação', columns: [['id', 'ID'], ['pet', 'Pet'], ['vacina', 'Vacina'], ['data_aplicacao', 'Aplicação'], ['data_proxima_dose', 'Próxima dose']], fields: [['id_pet', 'Pet', 'number'], ['id_vacina', 'Vacina', 'number'], ['data_aplicacao', 'Data da aplicação', 'date'], ['data_proxima_dose', 'Próxima dose', 'date']] },
+  agendamentos: { description: 'Organize os atendimentos e a agenda da clínica', singular: 'agendamento', columns: [['id', 'ID'], ['data_hora', 'Data'], ['pet', 'Pet'], ['servico', 'Serviço']], fields: [['id_pet', 'Pet', 'select'], ['id_servico', 'Serviço', 'select'], ['data_hora', 'Data', 'date']] },
+  vacinas: { description: 'Gerencie o catálogo de vacinas da clínica', singular: 'vacina', columns: [['id', 'ID'], ['vacina', 'Vacina'], ['fabricante', 'Fabricante']], fields: [['vacina', 'Nome da vacina', 'text'], ['fabricante', 'Fabricante', 'text']] },
+  'pet-vacina': { description: 'Acompanhe o histórico de vacinação dos pets', singular: 'aplicação', columns: [['id', 'ID'], ['pet', 'Pet'], ['vacina', 'Vacina'], ['data_aplicacao', 'Aplicação'], ['data_proxima_dose', 'Próxima dose']], fields: [['id_pet', 'Pet', 'select'], ['id_vacina', 'Vacina', 'select'], ['data_aplicacao', 'Data da aplicação', 'date'], ['data_proxima_dose', 'Próxima dose', 'date']] },
   services: { description: 'Gerencie os procedimentos oferecidos pela clínica', singular: 'serviço', columns: [['id', 'ID'], ['servico', 'Nome do serviço'], ['duracao_min', 'Duração'], ['valor', 'Valor']], fields: [['servico', 'Nome do serviço', 'text'], ['duracao_min', 'Duração', 'select'], ['valor', 'Valor', 'text']] },
   usuarios: { description: 'Gerencie os usuários cadastrados no sistema', singular: 'usuário', columns: [['id', 'ID'], ['nome', 'Nome'], ['email', 'E-mail'], ['role', 'Papel'], ['ativo', 'Situação']], fields: [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['senha', 'Senha', 'password'], ['role', 'Papel', 'text']] },
   admin: { description: 'Gerencie os administradores da plataforma', singular: 'administrador', columns: [['id', 'ID'], ['nome', 'Nome'], ['email', 'E-mail']], fields: [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['senha', 'Senha', 'password']] },
@@ -85,7 +83,7 @@ const configs: Record<string, { description: string; singular: string; columns: 
 
 const display = (value: unknown) => {
   if (value == null || value === '') return '—'
-  if (typeof value === 'object') return String((value as Item).nome ?? 'Relacionado')
+  if (typeof value === 'object') { const o = value as Item; return String(o.nome ?? o.servico ?? o.vacina ?? 'Relacionado') }
   if (typeof value === 'boolean') return value ? 'Ativo' : 'Inativo'
   return String(value)
 }
@@ -125,7 +123,7 @@ function App() {
       <header className="topbar">
         <button className="menu-toggle" onClick={() => setMobileOpen(true)}><Icon name="menu" /></button>
         <div className="crumb"><span>CliniPet</span><Icon name="chevron" size={15} /><strong>{active.label}</strong></div>
-        <div className="top-actions"><label className="global-search"><Icon name="search" size={18} /><input placeholder="Buscar no CliniPet..." /><kbd>⌘ K</kbd></label><button className="icon-btn"><Icon name="help" /></button><button className="icon-btn notification"><Icon name="bell" /><i /></button><div className="top-avatar">MS</div></div>
+        <div className="top-actions"><button className="icon-btn"><Icon name="help" /></button><button className="icon-btn notification"><Icon name="bell" /><i /></button><div className="top-avatar">MS</div></div>
       </header>
       <div className="content">{active.id === 'dashboard' ? <Dashboard navigate={navigate} /> : active.id === 'configuracoes' ? <Settings /> : configs[active.id] ? <ResourcePage id={active.id} label={active.label} /> : <NotFound navigate={navigate} />}</div>
     </main>
@@ -135,7 +133,16 @@ function App() {
 function Dashboard({ navigate }: { navigate: (path: string) => void }) {
   const [counts, setCounts] = useState<Record<string, number>>({ tutores: 0, pets: 0, agendamentos: 0, vacinas: 0 })
   const [offline, setOffline] = useState(false)
-  useEffect(() => { Promise.all(['tutores', 'pets', 'agendamentos', 'vacinas'].map(async key => [key, (await api.list(key)).length] as const)).then(rows => setCounts(Object.fromEntries(rows))).catch(() => setOffline(true)) }, [])
+  const [lists, setLists] = useState<Record<string, Item[]>>({ pets: [], agendamentos: [] })
+  useEffect(() => {
+    Promise.all(['tutores', 'pets', 'agendamentos', 'vacinas'].map(async key => [key, await api.list(key)] as const)).then(rows => {
+      setCounts(Object.fromEntries(rows.map(([key, list]) => [key, list.length])))
+      setLists(Object.fromEntries(rows.filter(([key]) => key === 'pets' || key === 'agendamentos')))
+    }).catch(() => setOffline(true))
+  }, [])
+  const recentPets = [...lists.pets].sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 5)
+  const upcoming = [...lists.agendamentos].sort((a, b) => String(a.data_hora).localeCompare(String(b.data_hora)))
+  const nextAppointments = (upcoming.filter(a => String(a.data_hora).slice(0, 10) >= new Date().toISOString().slice(0, 10)).length ? upcoming.filter(a => String(a.data_hora).slice(0, 10) >= new Date().toISOString().slice(0, 10)) : upcoming.reverse()).slice(0, 5)
   const date = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).format(new Date())
   const stats = [['tutores', 'Tutores cadastrados', 'users'], ['pets', 'Pets cadastrados', 'paw'], ['agendamentos', 'Agendamentos', 'calendar'], ['vacinas', 'Vacinas no catálogo', 'shield']] as const
   return <>
@@ -144,11 +151,11 @@ function Dashboard({ navigate }: { navigate: (path: string) => void }) {
     {offline && <div className="connection"><div><Icon name="refresh" /><span><strong>Backend indisponível</strong> Não foi possível carregar os dados em localhost:3000.</span></div><button onClick={() => location.reload()}>Tentar novamente</button></div>}
     <section className="stats">{stats.map(([key, label, icon], i) => <article className="stat-card" key={key}><div className={`stat-icon tint-${i}`}><Icon name={icon} /></div><div><span>{label}</span><strong>{counts[key]}</strong><small>Dados da API</small></div></article>)}</section>
     <section className="dashboard-grid">
-      <article className="panel appointments"><PanelHead title="Próximos atendimentos" subtitle="Agenda da clínica" action="Ver agenda" onClick={() => navigate('/agendamentos')} /><Empty icon="calendar" title="Nenhum atendimento encontrado" text="Os próximos agendamentos aparecerão aqui." action="Criar agendamento" onClick={() => navigate('/agendamentos')} /></article>
+      <article className="panel appointments"><PanelHead title="Próximos atendimentos" subtitle="Agenda da clínica" action="Ver agenda" onClick={() => navigate('/agendamentos')} />{nextAppointments.length === 0 ? <Empty icon="calendar" title="Nenhum atendimento encontrado" text="Os próximos agendamentos aparecerão aqui." action="Criar agendamento" onClick={() => navigate('/agendamentos')} /> : <ul className="mini-list">{nextAppointments.map(a => <li key={String(a.id)}><span className="mini-icon"><Icon name="calendar" size={18} /></span><div><strong>{display(a.pet)}</strong><small>{display(a.service ?? a.servico)}</small></div><time>{String(a.data_hora).slice(0, 10).split('-').reverse().join('/')}</time></li>)}</ul>}</article>
       <article className="panel quick"><PanelHead title="Ações rápidas" subtitle="Acesse as tarefas mais usadas" /><div className="quick-grid">{[
         ['Novo tutor', 'users', '/tutores'], ['Cadastrar pet', 'paw', '/pets'], ['Nova vacina', 'shield', '/vacinas'], ['Novo serviço', 'stethoscope', '/services']
       ].map(([label, icon, to]) => <button key={label} onClick={() => navigate(to)}><span><Icon name={icon as IconName} /></span>{label}<Icon name="chevron" size={16} /></button>)}</div></article>
-      <article className="panel recent"><PanelHead title="Pets recentes" subtitle="Últimos animais cadastrados" action="Ver todos" onClick={() => navigate('/pets')} /><Empty icon="paw" title="Nenhum pet cadastrado" text="Cadastre o primeiro pet para começar." action="Cadastrar pet" onClick={() => navigate('/pets')} /></article>
+      <article className="panel recent"><PanelHead title="Pets recentes" subtitle="Últimos animais cadastrados" action="Ver todos" onClick={() => navigate('/pets')} />{recentPets.length === 0 ? <Empty icon="paw" title="Nenhum pet cadastrado" text="Cadastre o primeiro pet para começar." action="Cadastrar pet" onClick={() => navigate('/pets')} /> : <ul className="mini-list">{recentPets.map(p => <li key={String(p.id)}><span className="mini-icon"><Icon name="paw" size={18} /></span><div><strong>{display(p.nome)}</strong><small>{[p.especie, p.raca].filter(Boolean).join(' · ')}</small></div></li>)}</ul>}</article>
       <article className="panel vaccines"><PanelHead title="Próximas doses" subtitle="Acompanhamento de vacinação" action="Ver histórico" onClick={() => navigate('/pet-vacina')} /><Empty icon="syringe" title="Nenhuma dose programada" text="As próximas doses serão exibidas nesta área." /></article>
     </section>
   </>
@@ -181,7 +188,7 @@ function ResourcePage({ id, label }: { id: string; label: string }) {
     <article className="table-panel">
       <div className="table-tools"><label className="table-search"><Icon name="search" size={18} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder={`Pesquisar ${label.toLowerCase()}...`} /></label><div><button className="filter-btn" onClick={load}><Icon name="refresh" size={17} />Atualizar</button></div></div>
       {loading ? <div className="skeleton-wrap">{[1, 2, 3, 4].map(i => <div className="skeleton" key={i} />)}</div> : error ? <div className="error-state"><span><Icon name="refresh" /></span><h3>Não foi possível carregar os dados</h3><p>{error}</p><Button variant="secondary" onClick={load}>Tentar novamente</Button></div> : visible.length === 0 ? <Empty icon={id === 'pets' ? 'paw' : 'grid'} title={query ? 'Nenhum resultado encontrado' : `Nenhum ${config.singular} cadastrado`} text={query ? 'Tente ajustar os termos da pesquisa.' : 'Comece adicionando o primeiro registro.'} action={!query ? `Novo ${config.singular}` : undefined} onClick={() => setModal(true)} /> :
-        <div className="table-scroll"><table><thead><tr>{config.columns.map(([, title]) => <th key={title}>{title}<Icon name="arrow" size={12} /></th>)}<th>Ações</th></tr></thead><tbody>{visible.map((item, i) => <tr key={String(item.id ?? i)}>{config.columns.map(([key]) => <td key={key}>{key === 'servico' ? display(item[key]) : key === 'duracao_min' ? formatServiceDuration(item[key]) : key === 'status' || key === 'ativo' ? <span className="badge">{display(item[key])}</span> : display(item[key])}</td>)}<td><div className="row-actions"><button title="Visualizar"><Icon name="eye" size={17} /></button><button title="Editar" onClick={() => { setEditing(item); setModal(true) }}><Icon name="edit" size={17} /></button><button title="Excluir" onClick={() => remove(item)}><Icon name="trash" size={17} /></button></div></td></tr>)}</tbody></table></div>}
+        <div className="table-scroll"><table><thead><tr>{config.columns.map(([, title]) => <th key={title}>{title}<Icon name="arrow" size={12} /></th>)}<th>Ações</th></tr></thead><tbody>{visible.map((item, i) => <tr key={String(item.id ?? i)}>{config.columns.map(([key]) => <td key={key}>{key === 'servico' ? display(item[key] ?? item.service) : key === 'duracao_min' ? formatServiceDuration(item[key]) : key === 'status' || key === 'ativo' ? <span className="badge">{display(item[key])}</span> : display(item[key])}</td>)}<td><div className="row-actions"><button title="Visualizar"><Icon name="eye" size={17} /></button><button title="Editar" onClick={() => { setEditing(item); setModal(true) }}><Icon name="edit" size={17} /></button><button title="Excluir" onClick={() => remove(item)}><Icon name="trash" size={17} /></button></div></td></tr>)}</tbody></table></div>}
       <div className="pagination"><span>Exibindo {visible.length} de {items.length} registros</span><div><button disabled>Anterior</button><button className="current">1</button><button disabled>Próxima</button></div></div>
     </article>
     {modal && <CreateModal resource={id} config={config} item={editing} close={closeModal} done={() => { setModal(false); setToast(editing ? 'Registro atualizado com sucesso.' : 'Registro cadastrado com sucesso.'); setEditing(null); load() }} />}
@@ -200,6 +207,34 @@ function CreateModal({ resource, config, item, close, done }: { resource: string
     if (resource !== 'pets') return
     api.list('tutores').then(setTutores).catch(() => setTutores([]))
   }, [resource])
+
+  const [relations, setRelations] = useState<Record<string, { value: string; label: string }[]>>({})
+  const [especie, setEspecie] = useState(String(item?.especie ?? ''))
+  const [raca, setRaca] = useState(String(item?.raca ?? ''))
+  const [racas, setRacas] = useState<{ value: string; label: string }[]>([])
+  const [loadingRacas, setLoadingRacas] = useState(false)
+  const especieComRacas = especie === EspeciePet.CACHORRO || especie === EspeciePet.GATO
+
+  useEffect(() => {
+    if (resource !== 'pets' || !especieComRacas) { setRacas([]); return }
+    let active = true
+    setLoadingRacas(true)
+    api.list(`racas?especie=${especie}`)
+      .then(rows => { if (active) setRacas(rows.map(row => ({ value: String(row.nome), label: String(row.nome) }))) })
+      .catch(() => { if (active) setRacas([]) })
+      .finally(() => { if (active) setLoadingRacas(false) })
+    return () => { active = false }
+  }, [resource, especie, especieComRacas])
+
+  useEffect(() => {
+    const sources: Record<string, [string, string]> = { id_pet: ['pets', 'nome'], id_servico: ['services', 'servico'], id_vacina: ['vacinas', 'vacina'] }
+    config.fields.filter(f => f[0] in sources).forEach(([name]) => {
+      const [route, labelKey] = sources[name]
+      api.list(route)
+        .then(rows => setRelations(current => ({ ...current, [name]: rows.map(row => ({ value: String(row.id), label: String(row[labelKey] ?? row.nome ?? `#${row.id}`) })) })))
+        .catch(() => setRelations(current => ({ ...current, [name]: [] })))
+    })
+  }, [config])
 
   const formatDurationForApi = (value: FormDataEntryValue | null) => {
     if (!value) return undefined
@@ -248,7 +283,7 @@ function CreateModal({ resource, config, item, close, done }: { resource: string
     setError('')
     const formData = new FormData(event.currentTarget)
     const data: Item = Object.fromEntries(formData)
-    config.fields.filter(f => f[2] === 'number').forEach(([key]) => { data[key] = Number(data[key]) })
+    config.fields.filter(f => f[2] === 'number' || f[0].startsWith('id_')).forEach(([key]) => { data[key] = Number(data[key]) })
     config.fields.filter(f => f[2] === 'password').forEach(([key]) => { if (!data[key]) delete data[key] })
 
     if (resource === 'services') {
@@ -292,8 +327,19 @@ function CreateModal({ resource, config, item, close, done }: { resource: string
       </select><button type="button" className="mini-action" onClick={() => setShowCreateTutor((current) => !current)}>{showCreateTutor ? 'Fechar' : 'Novo tutor'}</button></div>{showCreateTutor && <div className="inline-form"><div className="inline-inputs"><input type="text" value={newTutor.nome} onChange={event => setNewTutor(current => ({ ...current, nome: event.target.value }))} placeholder="Nome do tutor" /><input type="email" value={newTutor.email} onChange={event => setNewTutor(current => ({ ...current, email: event.target.value }))} placeholder="E-mail" /><input type="tel" value={newTutor.telefone} onChange={event => setNewTutor(current => ({ ...current, telefone: event.target.value }))} placeholder="Telefone" /></div><button type="button" className="mini-save" onClick={submitNewTutor}>Salvar tutor</button></div>}<small>Campo conforme contrato de integração</small></label>
     }
 
+    if (resource === 'pets' && name === 'especie') {
+      return <label key={name}><span>{label}</span><select name={name} required value={especie} onChange={e => { setEspecie(e.target.value); setRaca('') }}>
+        <option value="">Selecione uma opção</option>
+        {especiesPetOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select><small>Campo conforme contrato de integração</small></label>
+    }
+
+    if (resource === 'pets' && name === 'raca' && especieComRacas && (loadingRacas || racas.length > 0)) {
+      return <BreedCombobox key={name} name={name} label={label} options={racas} loading={loadingRacas} value={raca} onChange={setRaca} />
+    }
+
     if (type === 'select' || name === 'duracao') {
-      const options = getSelectOptions(name)
+      const options = relations[name] ?? getSelectOptions(name)
       return <label key={name}><span>{label}</span><select name={name} required defaultValue={item?.[name] ? String(item[name]) : ''}>
         {!item && <option value="">Selecione uma opção</option>}
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -302,6 +348,15 @@ function CreateModal({ resource, config, item, close, done }: { resource: string
 
     return <label key={name}><span>{label}</span><input name={name} type={type} required={!item || type !== 'password'} defaultValue={item && type !== 'password' ? display(item[name]) === '—' ? '' : String(item[name]) : ''} placeholder={`Informe ${label.toLowerCase()}`} /><small>Campo conforme contrato de integração</small></label>
   })}</div>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><Button variant="secondary" onClick={close}>Cancelar</Button><Button type="submit" icon={saving ? 'refresh' : item ? 'edit' : 'plus'}>{saving ? 'Salvando...' : item ? 'Salvar alterações' : 'Cadastrar'}</Button></div></form></section></div>
+}
+
+function BreedCombobox({ name, label, options, loading, value, onChange }: { name: string; label: string; options: { value: string; label: string }[]; loading: boolean; value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const term = value.trim().toLowerCase()
+  const filtered = options.filter(option => option.label.toLowerCase().includes(term))
+  return <div className="breed-field"><label><span>{label}</span><div className="breed-input"><input name={name} required autoComplete="off" value={value} disabled={loading} placeholder={loading ? 'Carregando raças...' : 'Digite para pesquisar a raça'} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} onChange={e => { onChange(e.target.value); setOpen(true) }} />
+    {open && !loading && <ul className="breed-list" role="listbox">{filtered.length === 0 ? <li className="breed-empty">Nenhuma raça encontrada</li> : filtered.map(option => <li key={option.value} role="option" aria-selected={option.value === value} onMouseDown={e => { e.preventDefault(); onChange(option.value); setOpen(false) }}>{option.label}</li>)}</ul>}</div><small>Campo conforme contrato de integração</small></label>
+  </div>
 }
 
 function Settings() {
