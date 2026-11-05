@@ -70,12 +70,17 @@ const modules = [
   { id: 'configuracoes', label: 'Configurações', icon: 'settings' as IconName, path: '/configuracoes' },
 ]
 
+const toDateTimeLocal = (value: unknown) => {
+  const text = String(value)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00` : text.slice(0, 16)
+}
+
 const configs: Record<string, { description: string; singular: string; columns: [string, string][]; fields: [string, string, string][] }> = {
   tutores: { description: 'Gerencie os responsáveis pelos pets da clínica', singular: 'tutor', columns: [['id', 'ID'], ['nome', 'Nome'], ['email', 'E-mail'], ['telefone', 'Telefone'], ['pets', 'Pets']], fields: [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['telefone', 'Telefone', 'tel']] },
   pets: { description: 'Cadastre e acompanhe os animais atendidos pela clínica', singular: 'pet', columns: [['id', 'ID'], ['nome', 'Nome'], ['especie', 'Espécie'], ['raca', 'Raça'], ['tutor', 'Tutor responsável']], fields: [['nome', 'Nome do pet', 'text'], ['especie', 'Espécie', 'select'], ['raca', 'Raça', 'text'], ['id_tutor', 'Tutor responsável', 'number']] },
-  agendamentos: { description: 'Organize os atendimentos e a agenda da clínica', singular: 'agendamento', columns: [['id', 'ID'], ['data_hora', 'Data'], ['pet', 'Pet'], ['servico', 'Serviço']], fields: [['id_pet', 'Pet', 'select'], ['id_servico', 'Serviço', 'select'], ['data_hora', 'Data', 'date']] },
+  agendamentos: { description: 'Organize os atendimentos e a agenda da clínica', singular: 'agendamento', columns: [['id', 'ID'], ['data_hora', 'Data'], ['pet', 'Pet'], ['servico', 'Serviço']], fields: [['id_pet', 'Pet', 'select'], ['id_servico', 'Serviço', 'select'],   ['data_hora', 'Data e hora', 'datetime-local']] },
   vacinas: { description: 'Gerencie o catálogo de vacinas da clínica', singular: 'vacina', columns: [['id', 'ID'], ['vacina', 'Vacina'], ['fabricante', 'Fabricante']], fields: [['vacina', 'Nome da vacina', 'text'], ['fabricante', 'Fabricante', 'text']] },
-  'pet-vacina': { description: 'Acompanhe o histórico de vacinação dos pets', singular: 'aplicação', columns: [['id', 'ID'], ['pet', 'Pet'], ['vacina', 'Vacina'], ['data_aplicacao', 'Aplicação'], ['data_proxima_dose', 'Próxima dose']], fields: [['id_pet', 'Pet', 'select'], ['id_vacina', 'Vacina', 'select'], ['data_aplicacao', 'Data da aplicação', 'date'], ['data_proxima_dose', 'Próxima dose', 'date']] },
+  'pet-vacina': { description: 'Acompanhe o histórico de vacinação dos pets', singular: 'aplicação', columns: [['id', 'ID'], ['pet', 'Pet'], ['vacina', 'Vacina'], ['data_aplicacao', 'Aplicação'], ['data_proxima_dose', 'Próxima dose']], fields: [['id_pet', 'Pet', 'select'], ['id_vacina', 'Vacina', 'select'], ['data_aplicacao', 'Data da aplicação', 'datetime-local'], ['data_proxima_dose', 'Próxima dose', 'datetime-local']] },
   services: { description: 'Gerencie os procedimentos oferecidos pela clínica', singular: 'serviço', columns: [['id', 'ID'], ['servico', 'Nome do serviço'], ['duracao_min', 'Duração'], ['valor', 'Valor']], fields: [['servico', 'Nome do serviço', 'text'], ['duracao_min', 'Duração', 'select'], ['valor', 'Valor', 'text']] },
   usuarios: { description: 'Gerencie os usuários cadastrados no sistema', singular: 'usuário', columns: [['id', 'ID'], ['nome', 'Nome'], ['email', 'E-mail'], ['role', 'Papel'], ['ativo', 'Situação']], fields: [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['senha', 'Senha', 'password'], ['role', 'Papel', 'text']] },
   admin: { description: 'Gerencie os administradores da plataforma', singular: 'administrador', columns: [['id', 'ID'], ['nome', 'Nome'], ['email', 'E-mail']], fields: [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['senha', 'Senha', 'password']] },
@@ -285,6 +290,7 @@ function CreateModal({ resource, config, item, close, done }: { resource: string
     const data: Item = Object.fromEntries(formData)
     config.fields.filter(f => f[2] === 'number' || f[0].startsWith('id_')).forEach(([key]) => { data[key] = Number(data[key]) })
     config.fields.filter(f => f[2] === 'password').forEach(([key]) => { if (!data[key]) delete data[key] })
+    config.fields.filter(f => f[2] === 'datetime-local').forEach(([key]) => { data[key] = data[key] ? `${String(data[key])}:00` : null })
 
     if (resource === 'services') {
       const durationValue = formData.get('duracao_min')
@@ -346,7 +352,7 @@ function CreateModal({ resource, config, item, close, done }: { resource: string
       </select><small>Campo conforme contrato de integração</small></label>
     }
 
-    return <label key={name}><span>{label}</span><input name={name} type={type} required={!item || type !== 'password'} defaultValue={item && type !== 'password' ? display(item[name]) === '—' ? '' : String(item[name]) : ''} placeholder={`Informe ${label.toLowerCase()}`} /><small>Campo conforme contrato de integração</small></label>
+    return <label key={name}><span>{label}</span><input name={name} type={type} required={name !== 'data_proxima_dose' && (!item || type !== 'password')} defaultValue={item && type !== 'password' ? display(item[name]) === '—' ? '' : type === 'datetime-local' ? toDateTimeLocal(item[name]) : String(item[name]) : ''} placeholder={`Informe ${label.toLowerCase()}`} /><small>Campo conforme contrato de integração</small></label>
   })}</div>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><Button variant="secondary" onClick={close}>Cancelar</Button><Button type="submit" icon={saving ? 'refresh' : item ? 'edit' : 'plus'}>{saving ? 'Salvando...' : item ? 'Salvar alterações' : 'Cadastrar'}</Button></div></form></section></div>
 }
 
