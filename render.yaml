@@ -6,7 +6,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: NODE_VERSION
-        value: 22
+        value: "22"
       - key: VITE_API_URL
         sync: false # URL pública da API, ex.: https://clinipet-api.onrender.com
     routes:
